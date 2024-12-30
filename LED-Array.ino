@@ -93,7 +93,7 @@ void setup() {
 void loop() {
   unsigned long currentTime = millis();        // get current time
   
-// update things if enough time has passed for ~60 fps
+  // update things if enough time has passed for ~60 fps
   if ((currentTime - lastPatternUpdate) >= ledUpdateRate) {
     lastPatternUpdate = millis();   // update time of the last pattern updaate
 
@@ -121,10 +121,25 @@ void loop() {
       }
     }
 
+    update_pattern();   // check buttons and change current pattern if needed
   }
-  
 
-  // use button inputs to change patterns         
+
+}
+
+
+
+// converts pixel location coords to a position on a list to place in giant leds structure
+int locate_pixel(int x,int y,int z){
+  // x refers to line num
+  int index = x*NUM_LEDS_PER_STRIP*NUM_STRIPS_PER_LINE + y*NUM_LEDS_PER_STRIP + z;
+  return index;
+
+};
+
+
+// use button inputs to change patterns  
+void update_pattern() {       
   incButton.update();  decButton.update();  resetButton.update(); // update button states
 
   if (incButton.pressed()) {  // inc button rising edge
@@ -150,18 +165,7 @@ void loop() {
     display_pattern(patternNumber); // show current pattern info on LCD
     reset_frame_position();
   }
-
 }
-
-
-
-// converts pixel location coords to a position on a list to place in giant leds structure
-int locate_pixel(int x,int y,int z){
-  // x refers to line num
-  int index = x*NUM_LEDS_PER_STRIP*NUM_STRIPS_PER_LINE + y*NUM_LEDS_PER_STRIP + z;
-  return index;
-
-};
 
 
 // diplay specified pattern name and number on LCD    
@@ -272,7 +276,7 @@ void pattern_2(){
 
 // pattern 3 - All leds rainbow shift
 void pattern_3(){
-  CRGB currentColor = ColorFromPalette(RainbowColors_p, cyclePosition, 80); // get current color from built-in rainbow palette
+  CRGB currentColor = ColorFromPalette(RainbowColors_p, cyclePosition, 60); // get current color from built-in rainbow palette
 
   for (int i = 0; i < NUM_LEDS; i++) {  // fill all leds with current color
     leds[i] = currentColor;
