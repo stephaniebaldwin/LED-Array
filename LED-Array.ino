@@ -27,15 +27,19 @@ CRGB leds[NUM_LEDS];  // define single giant LED matrix
 const int incButtonPin = 2;   // button consts
 const int decButtonPin = 4;   
 const int resetButtonPin = 7;   
-const int brightness = 60;    // pattern brightness (0 - 255)
 
 const int ledUpdateRate = 16; // time between LED updates (ms) (~60 fps)
 
-String patternNames[] = {"nothing lmao",              // 0
-                         "red const",                 // 1
-                         "Alternating RGB",           // 2
-                         "100% rainbow",              // 3
-                         "wave of LGBTGIFLMAOKFC"};   // 4
+String patternNames[] = {"nothing lmao",                        // 0
+                         "red const",                           // 1
+                         "Alternating RGB",                     // 2
+                         "100% rainbow",                        // 3
+                         "wave of rainbow (left-to-right)",     // 4
+                         "Raindrops",                           // 5
+                         "Rainbow Raindrops",                   // 6
+                         "3D Diagonal Waves",                   // 7
+                         "Totally Not A TeamLab Knockoff",      // 8
+                         "\"Tetris\""};                           // 9
 
 const int rs = 12;            // LCD consts
 const int en = 13;
@@ -50,8 +54,9 @@ unsigned int patternNumber = 0;       // current pattern num
 unsigned long lastPatternUpdate = 0;  // time (ms) since last frame of animation
 
 unsigned int cyclePosition = 0;       // the frame number within a moving pattern
-
 unsigned int frameCount    = 0;       // the number of intervals that a frame lasting longer than the pattern update cycle has been held for
+
+int brightness = 80;    // pattern brightness (0 - 255)          
 
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);  // declare LCD
 unsigned int lcdCyclePosition = 0;          // state counter for scrolling text
@@ -163,10 +168,11 @@ void update_pattern() {
     display_pattern(patternNumber);   // show current pattern info on LCD
     reset_frame_position();    // reset animations for LEDs and LCD
   }
-  else if (resetButton.pressed()) {  // reset button
-    patternNumber = 0;  // reset number
-    display_pattern(patternNumber); // show current pattern info on LCD
-    reset_frame_position();
+  else if (resetButton.isPressed()) {  // reset button        TODO: change name to reflect brightness-changing functionality
+    brightness += 3;
+    if (brightness > 255) {
+      brightness = 0;
+    }
   }
 }
 
@@ -258,11 +264,11 @@ void pattern_2(){
 
   switch (cyclePosition){   // choose led color based on the current frame
     case 0:   // red
-      color = CRGB::Red;   break;
+      color = CRGB(brightness, 0, 0);   break;
     case 1:   // green
-      color = CRGB::Green;   break;
+      color = CRGB(0, brightness, 0);   break;
     case 2:   // blue
-      color = CRGB::Blue;   break;
+      color = CRGB(0, 0, brightness);   break;
   }
 
   for (int i = 0; i < NUM_LEDS; i++) {    // apply current color to all LEDs
@@ -274,7 +280,7 @@ void pattern_2(){
 
 // pattern 3 - All leds rainbow shift
 void pattern_3(){
-  CRGB currentColor = ColorFromPalette(RainbowColors_p, cyclePosition, 60); // get current color from built-in rainbow palette
+  CRGB currentColor = ColorFromPalette(RainbowColors_p, cyclePosition, brightness); // get current color from built-in rainbow palette
 
   for (int i = 0; i < NUM_LEDS; i++) {  // fill all leds with current color
     leds[i] = currentColor;
@@ -286,13 +292,14 @@ void pattern_3(){
 // pattern 4 - rainbow wave left-to-right
 void pattern_4(){
   for (int y = 0; y < 8; y++) {       // loop thru each column (when looking from the front. Contains 6*10 LEDs)
-    // get current color for the selected "column"
-    // TODO: add variations
-    if (cyclePosition + y*32 > 255) {
+    // determine current color for the selected "column"
+    CRGB color = CRGB::Black;   // variable containing color for the current "column"
 
+    if (cyclePosition + y*32 > 255) {
+      color = ColorFromPalette(RainbowColors_p, cyclePosition + y*32 - 256, brightness);
     }
-    else () {
-      CRGB color = ColorFromPalette(RainbowColors_p, cyclePosition + y*32, 60);
+    else {
+      color = ColorFromPalette(RainbowColors_p, cyclePosition + y*32, brightness);
     }
 
     // apply current color to the selected "column"
