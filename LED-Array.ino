@@ -27,6 +27,7 @@ CRGB leds[NUM_LEDS];  // define single giant LED matrix
 const int incButtonPin = 2;   // button consts
 const int decButtonPin = 4;   
 const int resetButtonPin = 7;   
+const int brightness = 60;    // pattern brightness (0 - 255)
 
 const int ledUpdateRate = 16; // time between LED updates (ms) (~60 fps)
 
@@ -81,12 +82,12 @@ void setup() {
   resetButton.setPressedState(HIGH);        // define HIGH as corresponding to the presed state
 
   // tell FastLED the type of LEDs, data structure, and number for the 6 data lines
-  FastLED.addLeds<NEOPIXEL, DATA_PIN_0>(leds, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 0
-  FastLED.addLeds<NEOPIXEL, DATA_PIN_1>(leds, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 1
-  FastLED.addLeds<NEOPIXEL, DATA_PIN_2>(leds, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 2
-  FastLED.addLeds<NEOPIXEL, DATA_PIN_3>(leds, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 3
-  FastLED.addLeds<NEOPIXEL, DATA_PIN_4>(leds, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 4
-  FastLED.addLeds<NEOPIXEL, DATA_PIN_5>(leds, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 5
+  FastLED.addLeds<NEOPIXEL, DATA_PIN_0>(leds, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 0 (start at index 0)
+  FastLED.addLeds<NEOPIXEL, DATA_PIN_1>(leds, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 1 (start at index 80)
+  FastLED.addLeds<NEOPIXEL, DATA_PIN_2>(leds, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 2 (start at index 160)
+  FastLED.addLeds<NEOPIXEL, DATA_PIN_3>(leds, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 3 (start at index 240)
+  FastLED.addLeds<NEOPIXEL, DATA_PIN_4>(leds, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 4 (start at index 320)
+  FastLED.addLeds<NEOPIXEL, DATA_PIN_5>(leds, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 5 (start at index 400)
 }
 
 // want to alternate btwn button stuff and displaying the current pattern
@@ -120,7 +121,6 @@ void loop() {
         lcdFrameCount++;
       }
     }
-
     update_pattern();   // check buttons and change current pattern if needed
   }
 
@@ -130,8 +130,11 @@ void loop() {
 
 
 // converts pixel location coords to a position on a list to place in giant leds structure
+// TODO: test this
 int locate_pixel(int x,int y,int z){
-  // x refers to line num
+  // x refers to line num (data lines 0-5, perpendicular to front view)
+  // y refers to the position of the strip (horizontal if looking from the front)
+  // z refers to the pixel location on the script (vertical going down in front view)
   int index = x*NUM_LEDS_PER_STRIP*NUM_STRIPS_PER_LINE + y*NUM_LEDS_PER_STRIP + z;
   return index;
 
@@ -244,31 +247,26 @@ void pattern_0(){   // const pattern, no counter
 // pattern 1 - Constant red for all
 void pattern_1(){   // const pattern, no counter 
   for (int i = 0; i < NUM_LEDS; i++) {
-    leds[i] = CRGB::Red;
+    leds[i].setRGB(brightness, 0, 0);
   }
 }
 
 // pattern 2 - All leds cycle thru all R, G, B discontinuously
 void pattern_2(){  
   // takes (global) counters to determine the frame within the cycle and the duration that the current frame has been held for
-  switch (cyclePosition){   // set led colors based on the current frame
+  CRGB color = CRGB::Black;   // create var to store current color
+
+  switch (cyclePosition){   // choose led color based on the current frame
     case 0:   // red
-      for (int i = 0; i < NUM_LEDS; i++) {    // TODO: avoid having the loop written for each frame since it's all uniform
-        leds[i] = CRGB::Red;
-      }
-      break;
-
+      color = CRGB::Red;   break;
     case 1:   // green
-      for (int i = 0; i < NUM_LEDS; i++) {    // TODO: avoid having the loop written for each frame since it's all uniform
-        leds[i] = CRGB::Green;
-      }
-      break;
-
+      color = CRGB::Green;   break;
     case 2:   // blue
-      for (int i = 0; i < NUM_LEDS; i++) {    // TODO: avoid having the loop written for each frame since it's all uniform
-        leds[i] = CRGB::Blue;
-      }
-      break;
+      color = CRGB::Blue;   break;
+  }
+
+  for (int i = 0; i < NUM_LEDS; i++) {    // apply current color to all LEDs
+    leds[i] = color;
   }
 
   increment_counters_longer_interval(3, 30);  // update counters
@@ -287,7 +285,26 @@ void pattern_3(){
 
 // pattern 4 - rainbow wave left-to-right
 void pattern_4(){
+  for (int y = 0; y < 8; y++) {       // loop thru each column (when looking from the front. Contains 6*10 LEDs)
+    // get current color for the selected "column"
+    // TODO: add variations
+    if (cyclePosition + y*32 > 255) {
 
+    }
+    else () {
+      CRGB color = ColorFromPalette(RainbowColors_p, cyclePosition + y*32, 60);
+    }
+
+    // apply current color to the selected "column"
+    for (int x = 0; x < 6; x++) {     // loop thru each strip
+      for (int z = 0; z < 10; z++) {  // loop thru each LED on a strip
+        leds[locate_pixel(x,y,z)] = color;
+      }
+    }
+    
+  }
+
+  increment_counters(256);  // update counter
 }
 
 
