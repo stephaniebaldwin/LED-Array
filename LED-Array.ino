@@ -9,9 +9,9 @@
 
 // define constants and variables
 // declare LED constants (size, data pins)
-#define NUM_LEDS_PER_STRIP  10     
-#define NUM_STRIPS_PER_LINE 8     
-#define NUM_LINES 5
+#define NUM_LEDS_PER_STRIP  10     // z
+#define NUM_STRIPS_PER_LINE 8      // y
+#define NUM_LINES 5                // x
 #define NUM_LEDS NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE * NUM_LINES
 #define DATA_PIN_0 3
 #define DATA_PIN_1 5
@@ -45,12 +45,23 @@ const int rs = 12;            // LCD consts
 const int en = 13;
 const int d4 = A5, d5 = A4, d6 = A3, d7 = A2;  
 
+// define custom palettes
+
+// define gradient palette
+// use https://rgbcolorpicker.com/ to change if it looks ugly
+DEFINE_GRADIENT_PALETTE(wavePalette) {  // brightest at index 255, fades to black (lower index => deeper under wave)
+  0,   0,   0,   0,     // black
+  128, 56,  207, 195,   // some teal thing in the middle idk
+  255, 101, 225, 255    // really bright blue ouchie my eyeballs
+};
+
+
 // declare variables
 Bounce2::Button incButton = Bounce2::Button();    // create object for inc button
 Bounce2::Button decButton = Bounce2::Button();    // create object for dec button
 Bounce2::Button brightnessButton = Bounce2::Button();  // create object for brightness inc button
 
-unsigned int patternNumber = 0;       // current pattern num
+uint8_t       patternNumber = 0;       // current pattern num
 unsigned long lastPatternUpdate = 0;  // time (ms) since last frame of animation
 
 unsigned int cyclePosition = 0;       // the frame number within a moving pattern
@@ -93,6 +104,8 @@ void setup() {
   FastLED.addLeds<NEOPIXEL, DATA_PIN_3>(leds, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 3 (start at index 240)
   FastLED.addLeds<NEOPIXEL, DATA_PIN_4>(leds, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 4 (start at index 320)
   FastLED.addLeds<NEOPIXEL, DATA_PIN_5>(leds, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 5 (start at index 400)
+
+  Serial.begin(9600);   // set up serial monitor (FOR TESTING ONLY)
 }
 
 // want to alternate btwn button stuff and displaying the current pattern
@@ -300,7 +313,7 @@ void pattern_3(){
 
 // pattern 4 - rainbow wave left-to-right
 void pattern_4(){
-  for (int y = 0; y < 8; y++) {       // loop thru each column (when looking from the front. Contains 6*10 LEDs)
+  for (int y = 0; y < NUM_STRIPS_PER_LINE; y++) {       // loop thru each column (when looking from the front. Contains 6*10 LEDs)
     // determine current color for the selected "column"
     CRGB color = CRGB::Black;   // variable containing color for the current "column"
 
@@ -312,8 +325,8 @@ void pattern_4(){
     }
 
     // apply current color to the selected "column"
-    for (int x = 0; x < 4; x++) {     // loop thru each strip
-      for (int z = 0; z < 10; z++) {  // loop thru each LED on a strip
+    for (int x = 0; x < NUM_LINES; x++) {     // loop thru each strip
+      for (int z = 0; z < NUM_LEDS_PER_STRIP; z++) {  // loop thru each LED on a strip
         leds[locate_pixel(x,y,z)] = color;
       }
     }
@@ -323,7 +336,29 @@ void pattern_4(){
 
 // pattern 5 - raindrops
 void pattern_5() {
-  for ()
+  // idk how to deal with raindrops overlapping thru cycle ends so raindrops will be offset in time, but
+  // all of them will finish before more are added with the next cycle
+  // aim for this to run @ 60 fps, use lots of gradients so raindrops don't fall at lightspeed lol
+  // use frameCount variable for a different purpose: keep track of spawn times for drops
+  uint8_t numPerSpawnTime = 1;      // how many drops are created in each spawning event
+  uint8_t numSpawnTimes = 4;        // how many spawning events are in a cycle
+  unsigned int    timeBetweenSpawns = 120;  // # frames (~60 fps) between spawning events    TODO: i just put a number, it's probably wrong
+
+  // at the start of a spawn event:
+  if ((int)(cyclePosition / (frameCount + 1)) == timeBetweenSpawns) {  // TODO: check if this math does what im trying to get it to do
+    for (int i = 0; i < numSpawnTimes; i++) {   // spawn however many drops
+      // select random xy
+      int dropX = random(NUM_LINES - 1);
+    }
+    frameCount++;
+  }
+
+  increment_counters(numSpawnTimes * timeBetweenSpawns);   // update counter    
+  if (frameCount >= numSpawnTimes) {         // reset spawn event counter if needed
+    frameCount = 0;
+  }
+
+
 }
 
 // pattern 6 - rainbow raindrops
@@ -333,14 +368,39 @@ void pattern_6() {
 
 // pattern 7 - 3D wave
 void pattern_7() {
-  
+  float closenessThreshold = 0.2;      // how far the pixel location can be from the actual function output for the pixel to be turned on
+  int8_t waveValue = 0;                // the "vertical position for a wave". surface corresponds to total depth, fades to black as value decreases
+  int8_t waveDepth = 6;                // how far pixels will be lit up (includes black at the very bottom) (includes surface)
 
+  CRGBPalette16 activatedPalette = wavePalette;   // activate palette for this pattern
+
+  // TODO: test with all LEDs to check if wave shape is correct
+  // TODO: will probably need to make the wave smoother somehow
+  for (int x = 0; x < NUM_LINES; x++) {   // fill colors if a pixel is on or under the wave surface
+    for (int y = 0; y < NUM_STRIPS_PER_LINE; y++) {
+      for (int z = 0; z < NUM_LEDS_PER_STRIP; z++) {
+        // check if wave is close to the current pixel and a wave hasn't already been drawn for the current column
+        if ((abs(pattern_7_wave_func(x, y, ((5 * cyclePosition)/ 113)) - z) <= closenessThreshold))  {  // 5 controls spd w/ time
+          waveValue = waveDepth;  // update waveValue to surface (max) value
+        }
+        else if (waveValue > 0) {
+          waveValue = waveValue - 1;  // decrease waveValue if currently in a wave
+        }
+
+        // draw colors 
+        int colorIndex = floor((float(waveValue)/waveDepth)*255);   // choose index based on current depth
+        leds[locate_pixel(x,y,z)] = ColorFromPalette(activatedPalette, colorIndex, brightness);  // light pixel according to the current color index
+      }
+    }
+  }
+
+  increment_counters(710);  // update counters (2pi ~ 710/113)
 }
 
 // define wave func that moves diagonally // to xy plane for pattern 7
-int z pattern_7_wave_func(int x, int y, int t) {   
+int pattern_7_wave_func(int x, int y, int t) {   
   int v = 0.4;  // set wave density
-  z = 2*sin(v*x + v*y - t) + 3;  // compute z value (sin is in radians), A and c are hard-coded
+  return 2*sin(v*x + v*y - t) + 2;  // compute z value (sin is in radians), A and c are hard-coded
 }
 
 // pattern 8 - teamlab pattern imitation
