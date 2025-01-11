@@ -11,7 +11,7 @@
 // declare LED constants (size, data pins)
 #define NUM_LEDS_PER_STRIP  10     
 #define NUM_STRIPS_PER_LINE 8     
-#define NUM_LINES 6
+#define NUM_LINES 5
 #define NUM_LEDS NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE * NUM_LINES
 #define DATA_PIN_0 3
 #define DATA_PIN_1 5
@@ -26,7 +26,7 @@ CRGB leds[NUM_LEDS];  // define single giant LED matrix
 // declare constants
 const int incButtonPin = 2;   // button consts
 const int decButtonPin = 4;   
-const int resetButtonPin = 7;   
+const int brightnessButtonPin = 7;   
 
 const int ledUpdateRate = 16; // time between LED updates (ms) (~60 fps)
 
@@ -39,7 +39,7 @@ String patternNames[] = {"nothing lmao",                        // 0
                          "Rainbow Raindrops",                   // 6
                          "3D Diagonal Waves",                   // 7
                          "Totally Not A TeamLab Knockoff",      // 8
-                         "\"Tetris\""};                           // 9
+                         "\"Tetris\""};                         // 9
 
 const int rs = 12;            // LCD consts
 const int en = 13;
@@ -48,7 +48,7 @@ const int d4 = A5, d5 = A4, d6 = A3, d7 = A2;
 // declare variables
 Bounce2::Button incButton = Bounce2::Button();    // create object for inc button
 Bounce2::Button decButton = Bounce2::Button();    // create object for dec button
-Bounce2::Button resetButton = Bounce2::Button();  // create object for reset button
+Bounce2::Button brightnessButton = Bounce2::Button();  // create object for brightness inc button
 
 unsigned int patternNumber = 0;       // current pattern num
 unsigned long lastPatternUpdate = 0;  // time (ms) since last frame of animation
@@ -82,9 +82,9 @@ void setup() {
   decButton.interval(5);                  // define debounce period (ms)
   decButton.setPressedState(HIGH);        // define HIGH as corresponding to the presed state
 
-  resetButton.attach(resetButtonPin, INPUT);  // specify button pin
-  resetButton.interval(5);                  // define debounce period (ms)
-  resetButton.setPressedState(HIGH);        // define HIGH as corresponding to the presed state
+  brightnessButton.attach(brightnessButtonPin, INPUT);  // specify button pin
+  brightnessButton.interval(5);                  // define debounce period (ms)
+  brightnessButton.setPressedState(HIGH);        // define HIGH as corresponding to the presed state
 
   // tell FastLED the type of LEDs, data structure, and number for the 6 data lines
   FastLED.addLeds<NEOPIXEL, DATA_PIN_0>(leds, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 0 (start at index 0)
@@ -102,7 +102,6 @@ void loop() {
   // update things if enough time has passed for ~60 fps
   if ((currentTime - lastPatternUpdate) >= ledUpdateRate) {
     lastPatternUpdate = millis();   // update time of the last pattern updaate
-
     switch (patternNumber) {  // update LED values based on the currently selected pattern
       case 0:
         pattern_0();  break;
@@ -114,6 +113,16 @@ void loop() {
         pattern_3();  break;
       case 4:
         pattern_4();  break;
+      case 5:
+        pattern_5();  break;
+      case 6:
+        pattern_6();  break;
+      case 7:
+        pattern_7();  break;
+      case 8:
+        pattern_8();  break;
+      case 9:
+        pattern_9();  break;
     }
     FastLED.show();   // push updates to led strips
 
@@ -148,7 +157,7 @@ int locate_pixel(int x,int y,int z){
 
 // use button inputs to change patterns  
 void update_pattern() {       
-  incButton.update();  decButton.update();  resetButton.update(); // update button states
+  incButton.update();  decButton.update();  brightnessButton.update(); // update button states
 
   if (incButton.pressed()) {  // inc button rising edge
     patternNumber = patternNumber + 1;  // increase number
@@ -168,9 +177,9 @@ void update_pattern() {
     display_pattern(patternNumber);   // show current pattern info on LCD
     reset_frame_position();    // reset animations for LEDs and LCD
   }
-  else if (resetButton.isPressed()) {  // reset button        TODO: change name to reflect brightness-changing functionality
-    brightness += 3;
-    if (brightness > 255) {
+  else if (brightnessButton.isPressed()) {  // brightness inc button
+    brightness += 5;  // increase LED brightness
+    if (brightness > 255) {   // reset brightness if max was reached
       brightness = 0;
     }
   }
@@ -303,15 +312,45 @@ void pattern_4(){
     }
 
     // apply current color to the selected "column"
-    for (int x = 0; x < 6; x++) {     // loop thru each strip
+    for (int x = 0; x < 4; x++) {     // loop thru each strip
       for (int z = 0; z < 10; z++) {  // loop thru each LED on a strip
         leds[locate_pixel(x,y,z)] = color;
       }
     }
-    
   }
-
   increment_counters(256);  // update counter
+}
+
+// pattern 5 - raindrops
+void pattern_5() {
+  for ()
+}
+
+// pattern 6 - rainbow raindrops
+void pattern_6() {
+
+}
+
+// pattern 7 - 3D wave
+void pattern_7() {
+  
+
+}
+
+// define wave func that moves diagonally // to xy plane for pattern 7
+int z pattern_7_wave_func(int x, int y, int t) {   
+  int v = 0.4;  // set wave density
+  z = 2*sin(v*x + v*y - t) + 3;  // compute z value (sin is in radians), A and c are hard-coded
+}
+
+// pattern 8 - teamlab pattern imitation
+void pattern_8() {
+
+}
+
+// pattern 9  - "tetris"
+void pattern_9() {
+
 }
 
 
