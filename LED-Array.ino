@@ -18,7 +18,6 @@
 #define DATA_PIN_2 6
 #define DATA_PIN_3 9
 #define DATA_PIN_4 10
-#define DATA_PIN_5 11
 
 CRGB leds[NUM_LEDS];  // define single giant LED matrix
 
@@ -39,7 +38,8 @@ String patternNames[] = {"nothing lmao",                        // 0
                          "Rainbow Raindrops",                   // 6
                          "3D Diagonal Waves",                   // 7
                          "Totally Not A TeamLab Knockoff",      // 8
-                         "\"Tetris\""};                         // 9
+                         "\"Tetris\"",                          // 9
+                         "coord test"};
 
 const int rs = 12;            // LCD consts
 const int en = 13;
@@ -103,7 +103,6 @@ void setup() {
   FastLED.addLeds<NEOPIXEL, DATA_PIN_2>(leds, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 2 (start at index 160)
   FastLED.addLeds<NEOPIXEL, DATA_PIN_3>(leds, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 3 (start at index 240)
   FastLED.addLeds<NEOPIXEL, DATA_PIN_4>(leds, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 4 (start at index 320)
-  FastLED.addLeds<NEOPIXEL, DATA_PIN_5>(leds, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 5 (start at index 400)
 
   Serial.begin(9600);   // set up serial monitor (FOR TESTING ONLY)
 }
@@ -136,6 +135,8 @@ void loop() {
         pattern_8();  break;
       case 9:
         pattern_9();  break;
+      case 10:
+        coord_test(); break;
     }
     FastLED.show();   // push updates to led strips
 
@@ -179,6 +180,7 @@ void update_pattern() {
     }
     display_pattern(patternNumber);   // show current pattern info on LCD
     reset_frame_position();
+    pattern_0();     // clear pixels
   }
   else if (decButton.pressed()) {   // dec button
     if (patternNumber > 0) {  // decrease number if doing so will not result in a negative number
@@ -189,6 +191,7 @@ void update_pattern() {
     }
     display_pattern(patternNumber);   // show current pattern info on LCD
     reset_frame_position();    // reset animations for LEDs and LCD
+    pattern_0();     // clear pixels
   }
   else if (brightnessButton.isPressed()) {  // brightness inc button
     brightness += 5;  // increase LED brightness
@@ -200,6 +203,7 @@ void update_pattern() {
 
 
 // diplay specified pattern name and number on LCD    
+// TODO: LCD text changes to nonsense sometimes
 void display_pattern(int pattern_num){
   //assumes that LCD and patternNames structure are global
   String name = patternNames[pattern_num] + "  ";   // get name of selected pattern
@@ -339,30 +343,53 @@ void pattern_5() {
   // idk how to deal with raindrops overlapping thru cycle ends so raindrops will be offset in time, but
   // all of them will finish before more are added with the next cycle
   // aim for this to run @ 60 fps, use lots of gradients so raindrops don't fall at lightspeed lol
-  // use frameCount variable for a different purpose: keep track of spawn times for drops
-  uint8_t numPerSpawnTime = 1;      // how many drops are created in each spawning event
-  uint8_t numSpawnTimes = 4;        // how many spawning events are in a cycle
+  uint8_t numPerSpawnTime = 3;      // how many drops are created in each spawning event
+  uint8_t numSpawnTimes = 1;        // how many spawning events are in a cycle
   unsigned int    timeBetweenSpawns = 120;  // # frames (~60 fps) between spawning events    TODO: i just put a number, it's probably wrong
 
-  // at the start of a spawn event:
-  if ((int)(cyclePosition / (frameCount + 1)) == timeBetweenSpawns) {  // TODO: check if this math does what im trying to get it to do
+  // at the start of a spawn event:  
+  // TODO: this just spawns once at the beginning-ish of a cycle rn
+  if (cyclePosition == 10) {
+
     for (int i = 0; i < numSpawnTimes; i++) {   // spawn however many drops
       // select random xy
       int dropX = random(NUM_LINES - 1);
+      int dropY = random(NUM_STRIPS_PER_LINE - 1);    // TODO: add checks that prevent duplicate spawn locations(??)
     }
-    frameCount++;
   }
 
   increment_counters(numSpawnTimes * timeBetweenSpawns);   // update counter    
-  if (frameCount >= numSpawnTimes) {         // reset spawn event counter if needed
-    frameCount = 0;
-  }
 
 
 }
 
+// draw a droplet and its associated gradient at a given point in time, ADD to pixel set 
+void drop_fall(CRGBPalette16 palette, int x, int y, int t) {
+  // palette: custom or built-in gradient palette
+  // x,y: horizontal location
+  // t:   time RELATIVE to drop spawning (t = 0 -> drop first appears)
+  // brightness is reduced far ahead and behind droplet "core"
+
+  const float brightnessModifiers[15] = {0.5, 0.8, 0.95, 1, 0.95, 0.9, 0.85, 0.75, 0.65, 0.55, 0.4, 0.3, 0.2, 0.1, 0.0};
+
+  int currentZ = 0;  // the current pixel being worked on
+  while (true) {
+    if (t - currentZ < 0) {   // don't bother looping thru pixels that are under the drop cus those are obviously off
+      break;
+    }
+    if (t >= currentZ) {
+      
+    }
+
+    currentZ++;
+  }
+
+  // TODO: need to SET the end of the drop to zero
+
+}
+
 // pattern 6 - rainbow raindrops
-void pattern_6() {
+void pattern_6() {   
 
 }
 
@@ -376,6 +403,7 @@ void pattern_7() {
 
   // TODO: test with all LEDs to check if wave shape is correct
   // TODO: will probably need to make the wave smoother somehow
+  // TODO: scale brightness with position
   for (int x = 0; x < NUM_LINES; x++) {   // fill colors if a pixel is on or under the wave surface
     for (int y = 0; y < NUM_STRIPS_PER_LINE; y++) {
       for (int z = 0; z < NUM_LEDS_PER_STRIP; z++) {
@@ -389,7 +417,8 @@ void pattern_7() {
 
         // draw colors 
         int colorIndex = floor((float(waveValue)/waveDepth)*255);   // choose index based on current depth
-        leds[locate_pixel(x,y,z)] = ColorFromPalette(activatedPalette, colorIndex, brightness);  // light pixel according to the current color index
+        int modifiedBrightness = floor((float(waveValue)/waveDepth)*brightness);   // scale brightness with depth
+        leds[locate_pixel(x,y,z)] = ColorFromPalette(activatedPalette, colorIndex, modifiedBrightness);  // light pixel according to the current color index
       }
     }
   }
@@ -410,6 +439,44 @@ void pattern_8() {
 
 // pattern 9  - "tetris"
 void pattern_9() {
+  // use similar spawning logic to the rain patterns
+}
+
+// (unofficial) pattern 10 - coord test
+void coord_test() {
+  // start all traces @ origin, red inc along x, green inc along y, blue inc along z
+  // if one axis reaches the end before the others, simply hold the pixel at the end of that axis
+
+  if (cyclePosition == 10) {   // clear pixels before the start of each cycle      
+    pattern_0();
+  }
+  else {
+    // fill x-axis:    TODO: the entire axis fills all at once instead of stepping
+    if (cyclePosition > NUM_LINES) {
+      leds[locate_pixel(NUM_LINES - 1, NUM_STRIPS_PER_LINE - 1, NUM_LEDS_PER_STRIP - 1)] = CRGB(brightness, 0, 0);  // set last pixel on the axis
+    }
+    else {
+      leds[locate_pixel(cyclePosition, NUM_STRIPS_PER_LINE - 1, NUM_LEDS_PER_STRIP - 1)] = CRGB(brightness, 0, 0);  // set current pixel to red 
+    }
+
+    // fill y-axis:
+    if (cyclePosition > NUM_STRIPS_PER_LINE) {
+      leds[locate_pixel(0, NUM_STRIPS_PER_LINE - 1, 0)] = CRGB(0, brightness, 0);  // set last pixel on the axis
+    }
+    else {
+      leds[locate_pixel(0, cyclePosition, 0)] = CRGB(0, brightness, 0);  // set current pixel to red 
+    }
+
+    // fill z-axis:
+    if (cyclePosition > NUM_LEDS_PER_STRIP) {
+      leds[locate_pixel(0, 0, NUM_LEDS_PER_STRIP - 1)] = CRGB(0, 0, brightness);  // set last pixel on the axis
+    }
+    else {
+      leds[locate_pixel(0, 0, cyclePosition)] = CRGB(0, 0, brightness);  // set current pixel to red (add so colors mix @ origin)
+    }
+  }
+
+  increment_counters_longer_interval(11, 30);   // update counters
 
 }
 
