@@ -37,8 +37,8 @@ String patternNames[] = {"nothing lmao",                        // 0
                          "Raindrops",                           // 5
                          "Rainbow Raindrops",                   // 6
                          "3D Diagonal Waves",                   // 7
-                         "Totally Not A TeamLab Knockoff",      // 8
-                         "\"Tetris\"",                          // 9
+                         "8",                                   // 8    original idea sounds like too much of a pain to implement, if u think of anything good put it here
+                         "9",                                   // 9
                          "coord test"};
 
 const int rs = 12;            // LCD consts
@@ -47,7 +47,7 @@ const int d4 = A5, d5 = A4, d6 = A3, d7 = A2;
 
 // define custom palettes
 
-// define gradient palette
+// define gradient palette (blue for wave, raindrops)
 // use https://rgbcolorpicker.com/ to change if it looks ugly
 DEFINE_GRADIENT_PALETTE(wavePalette) {  // brightest at index 255, fades to black (lower index => deeper under wave)
   0,   0,   0,   0,     // black
@@ -98,11 +98,11 @@ void setup() {
   brightnessButton.setPressedState(HIGH);        // define HIGH as corresponding to the presed state
 
   // tell FastLED the type of LEDs, data structure, and number for the 6 data lines
-  FastLED.addLeds<NEOPIXEL, DATA_PIN_0>(leds, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 0 (start at index 0)
-  FastLED.addLeds<NEOPIXEL, DATA_PIN_1>(leds, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 1 (start at index 80)
-  FastLED.addLeds<NEOPIXEL, DATA_PIN_2>(leds, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 2 (start at index 160)
-  FastLED.addLeds<NEOPIXEL, DATA_PIN_3>(leds, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 3 (start at index 240)
-  FastLED.addLeds<NEOPIXEL, DATA_PIN_4>(leds, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 4 (start at index 320)
+  FastLED.addLeds<NEOPIXEL, DATA_PIN_0>(leds, 0,   NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 0 (start at index 0)
+  FastLED.addLeds<NEOPIXEL, DATA_PIN_1>(leds, 80,  NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 1 (start at index 80)
+  FastLED.addLeds<NEOPIXEL, DATA_PIN_2>(leds, 160, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 2 (start at index 160)
+  FastLED.addLeds<NEOPIXEL, DATA_PIN_3>(leds, 240, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 3 (start at index 240)
+  FastLED.addLeds<NEOPIXEL, DATA_PIN_4>(leds, 320, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 4 (start at index 320)
 
   Serial.begin(9600);   // set up serial monitor (FOR TESTING ONLY)
 }
@@ -164,9 +164,16 @@ int locate_pixel(int x,int y,int z){
   // y refers to the position of the strip (horizontal if looking from the front)
   // z refers to the pixel location on the script (vertical going down in front view)
   int index = x*NUM_LEDS_PER_STRIP*NUM_STRIPS_PER_LINE + y*NUM_LEDS_PER_STRIP + z;
+
   return index;
 
 };
+
+/*
+#define NUM_LEDS_PER_STRIP  10     // z  TEMP SO I DONT HAVE TO SCROLL ALL THE WAY UP
+#define NUM_STRIPS_PER_LINE 8      // y
+#define NUM_LINES 5                // x
+*/
 
 
 // use button inputs to change patterns  
@@ -401,9 +408,9 @@ void pattern_7() {
 
   CRGBPalette16 activatedPalette = wavePalette;   // activate palette for this pattern
 
-  // TODO: test with all LEDs to check if wave shape is correct
   // TODO: will probably need to make the wave smoother somehow
   // TODO: scale brightness with position
+  // TODO: LOOKS FLAT
   for (int x = 0; x < NUM_LINES; x++) {   // fill colors if a pixel is on or under the wave surface
     for (int y = 0; y < NUM_STRIPS_PER_LINE; y++) {
       for (int z = 0; z < NUM_LEDS_PER_STRIP; z++) {
@@ -428,35 +435,36 @@ void pattern_7() {
 
 // define wave func that moves diagonally // to xy plane for pattern 7
 int pattern_7_wave_func(int x, int y, int t) {   
-  int v = 0.4;  // set wave density
+  int v = 0.5;  // set wave density
   return 2*sin(v*x + v*y - t) + 2;  // compute z value (sin is in radians), A and c are hard-coded
 }
 
-// pattern 8 - teamlab pattern imitation
+// pattern 8 - idk
 void pattern_8() {
 
 }
 
-// pattern 9  - "tetris"
+// pattern 9  - idk
 void pattern_9() {
-  // use similar spawning logic to the rain patterns
+  // idk
 }
 
 // (unofficial) pattern 10 - coord test
 void coord_test() {
   // start all traces @ origin, red inc along x, green inc along y, blue inc along z
   // if one axis reaches the end before the others, simply hold the pixel at the end of that axis
-
-  if (cyclePosition == 10) {   // clear pixels before the start of each cycle      
+  // TODO: weirdness (things lighting when they're not supposed to)
+  
+  if (cyclePosition >= 10) {   // clear pixels before the start of each cycle      
     pattern_0();
   }
-  else {
-    // fill x-axis:    TODO: the entire axis fills all at once instead of stepping
+  else if (cyclePosition > 0) {    
+    // fill x-axis:   
     if (cyclePosition > NUM_LINES) {
-      leds[locate_pixel(NUM_LINES - 1, NUM_STRIPS_PER_LINE - 1, NUM_LEDS_PER_STRIP - 1)] = CRGB(brightness, 0, 0);  // set last pixel on the axis
+      leds[locate_pixel(NUM_LINES - 1, NUM_STRIPS_PER_LINE - 1, NUM_LEDS_PER_STRIP - 1)] = CRGB(brightness, 0, 0);  // set last pixel on the axis 
     }
     else {
-      leds[locate_pixel(cyclePosition, NUM_STRIPS_PER_LINE - 1, NUM_LEDS_PER_STRIP - 1)] = CRGB(brightness, 0, 0);  // set current pixel to red 
+      leds[locate_pixel(cyclePosition, 0, 0)] += CRGB(brightness, 0, 0);  // set current pixel to red 
     }
 
     // fill y-axis:
@@ -464,7 +472,8 @@ void coord_test() {
       leds[locate_pixel(0, NUM_STRIPS_PER_LINE - 1, 0)] = CRGB(0, brightness, 0);  // set last pixel on the axis
     }
     else {
-      leds[locate_pixel(0, cyclePosition, 0)] = CRGB(0, brightness, 0);  // set current pixel to red 
+      leds[locate_pixel(0, cyclePosition, 0)] += CRGB(0, brightness, 0);  // set current pixel to green
+      leds[3] = CRGB(0, brightness, 0);  // set current pixel to green
     }
 
     // fill z-axis:
@@ -472,11 +481,12 @@ void coord_test() {
       leds[locate_pixel(0, 0, NUM_LEDS_PER_STRIP - 1)] = CRGB(0, 0, brightness);  // set last pixel on the axis
     }
     else {
-      leds[locate_pixel(0, 0, cyclePosition)] = CRGB(0, 0, brightness);  // set current pixel to red (add so colors mix @ origin)
+      leds[locate_pixel(0, 0, cyclePosition)] += CRGB(0, 0, brightness);  // set current pixel to blue 
     }
   }
 
   increment_counters_longer_interval(11, 30);   // update counters
+  
 
 }
 
