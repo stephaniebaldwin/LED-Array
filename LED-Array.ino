@@ -114,6 +114,8 @@ void loop() {
   // update things if enough time has passed for ~60 fps
   if ((currentTime - lastPatternUpdate) >= ledUpdateRate) {
     lastPatternUpdate = millis();   // update time of the last pattern updaate
+
+    update_pattern();   // check buttons and change current pattern if needed
     switch (patternNumber) {  // update LED values based on the currently selected pattern
       case 0:
         pattern_0();  break;
@@ -149,7 +151,7 @@ void loop() {
         lcdFrameCount++;
       }
     }
-    update_pattern();   // check buttons and change current pattern if needed
+    
   }
 
 
@@ -202,7 +204,7 @@ void update_pattern() {
   }
   else if (brightnessButton.isPressed()) {  // brightness inc button
     brightness += 5;  // increase LED brightness
-    if (brightness > 255) {   // reset brightness if max was reached
+    if (brightness > floor(0.7*255)) {   // reset brightness if max was reached
       brightness = 0;
     }
   }
@@ -451,42 +453,19 @@ void pattern_9() {
 
 // (unofficial) pattern 10 - coord test
 void coord_test() {
-  // start all traces @ origin, red inc along x, green inc along y, blue inc along z
-  // if one axis reaches the end before the others, simply hold the pixel at the end of that axis
-  // TODO: weirdness (things lighting when they're not supposed to)
-  
-  if (cyclePosition >= 10) {   // clear pixels before the start of each cycle      
-    pattern_0();
-  }
-  else if (cyclePosition > 0) {    
-    // fill x-axis:   
-    if (cyclePosition > NUM_LINES) {
-      leds[locate_pixel(NUM_LINES - 1, NUM_STRIPS_PER_LINE - 1, NUM_LEDS_PER_STRIP - 1)] = CRGB(brightness, 0, 0);  // set last pixel on the axis 
-    }
-    else {
-      leds[locate_pixel(cyclePosition, 0, 0)] += CRGB(brightness, 0, 0);  // set current pixel to red 
-    }
-
-    // fill y-axis:
-    if (cyclePosition > NUM_STRIPS_PER_LINE) {
-      leds[locate_pixel(0, NUM_STRIPS_PER_LINE - 1, 0)] = CRGB(0, brightness, 0);  // set last pixel on the axis
-    }
-    else {
-      leds[locate_pixel(0, cyclePosition, 0)] += CRGB(0, brightness, 0);  // set current pixel to green
-      leds[3] = CRGB(0, brightness, 0);  // set current pixel to green
-    }
-
-    // fill z-axis:
-    if (cyclePosition > NUM_LEDS_PER_STRIP) {
-      leds[locate_pixel(0, 0, NUM_LEDS_PER_STRIP - 1)] = CRGB(0, 0, brightness);  // set last pixel on the axis
-    }
-    else {
-      leds[locate_pixel(0, 0, cyclePosition)] += CRGB(0, 0, brightness);  // set current pixel to blue 
-    }
+  // whatever weirdness down there is wack so just text a few pixels statically, screw the flash mem endurance
+  for (int i = 0; i < NUM_LINES; i++) { // x-axis test - successful
+    leds[locate_pixel(i,0,0)] = CRGB(0, 0, brightness);
   }
 
-  increment_counters_longer_interval(11, 30);   // update counters
-  
+  for (int i = 0; i < NUM_STRIPS_PER_LINE; i++) { // y-axis test - successful
+    leds[locate_pixel(0,i,0)] = CRGB(0, brightness, 0);
+  }
+  for (int i = 0; i < NUM_LEDS_PER_STRIP; i++) { // z-axis test - successful
+    leds[locate_pixel(0,0,i)] = CRGB(brightness, 0, 0);
+  }
+  leds[locate_pixel(3, 3, 6)] = CRGB(brightness, 0, brightness);  // some pixel test - successful
+
 
 }
 
