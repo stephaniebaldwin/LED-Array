@@ -45,6 +45,8 @@ const int rs = 12;            // LCD consts
 const int en = 13;
 const int d4 = A5, d5 = A4, d6 = A3, d7 = A2;  
 
+const int max_brightness = 110;   // the highest brightness (0-255) allowed before resetting to off
+
 // define custom palettes
 
 // define gradient palette (blue for wave, raindrops)
@@ -160,7 +162,6 @@ void loop() {
 
 
 // converts pixel location coords to a position on a list to place in giant leds structure
-// TODO: test this
 int locate_pixel(int x,int y,int z){
   // x refers to line num (data lines 0-5, perpendicular to front view)
   // y refers to the position of the strip (horizontal if looking from the front)
@@ -204,7 +205,7 @@ void update_pattern() {
   }
   else if (brightnessButton.isPressed()) {  // brightness inc button
     brightness += 5;  // increase LED brightness
-    if (brightness > floor(0.7*255)) {   // reset brightness if max was reached
+    if (brightness > max_brightness) {   // reset brightness if max was reached
       brightness = 0;
     }
   }
@@ -349,51 +350,58 @@ void pattern_4(){
 
 // pattern 5 - raindrops
 void pattern_5() {
-  // idk how to deal with raindrops overlapping thru cycle ends so raindrops will be offset in time, but
-  // all of them will finish before more are added with the next cycle
+  // TODO: this whole thing is untested
+  CRGBPalette16 activatedPalette = wavePalette;   // activate palette for this pattern
+
   // aim for this to run @ 60 fps, use lots of gradients so raindrops don't fall at lightspeed lol
-  uint8_t numPerSpawnTime = 3;      // how many drops are created in each spawning event
-  uint8_t numSpawnTimes = 1;        // how many spawning events are in a cycle
-  unsigned int    timeBetweenSpawns = 120;  // # frames (~60 fps) between spawning events    TODO: i just put a number, it's probably wrong
+  // the time step for the drops themselves is synced with the framerate
+  uint8_t numSpawn = 5;      // how many drops are created 
+  float dropX[numSpawn];
+  float dropY[numSpawn];
 
-  // at the start of a spawn event:  
-  // TODO: this just spawns once at the beginning-ish of a cycle rn
-  if (cyclePosition == 10) {
-
-    for (int i = 0; i < numSpawnTimes; i++) {   // spawn however many drops
-      // select random xy
-      int dropX = random(NUM_LINES - 1);
-      int dropY = random(NUM_STRIPS_PER_LINE - 1);    // TODO: add checks that prevent duplicate spawn locations(??)
+  // only use one spawn cycle for now, spawn at cycle beginning
+  if (cyclePosition == 0) {
+    for (int i = 0; i < numSpawn; i++){   // select spawn coords for each drop
+      // note: doesn't check for duplicates
+      dropX[i] = random(NUM_LINES - 1);
+      dropY[i] = random(NUM_STRIPS_PER_LINE - 1);   
+    }
+  }
+  else {
+    // color drops at however many xy using the drop function
+    for (int i = 0; i < numSpawn; i++){
+      drop_fall(wavePalette, dropX[i], dropY[i], cyclePosition);
     }
   }
 
-  increment_counters(numSpawnTimes * timeBetweenSpawns);   // update counter    
-
+  increment_counters(40);   // update counter    
 
 }
 
-// draw a droplet and its associated gradient at a given point in time, ADD to pixel set 
+// draw a droplet and its associated gradient at a given point in time
 void drop_fall(CRGBPalette16 palette, int x, int y, int t) {
   // palette: custom or built-in gradient palette
   // x,y: horizontal location
-  // t:   time RELATIVE to drop spawning (t = 0 -> drop first appears)
-  // brightness is reduced far ahead and behind droplet "core"
+  // t:   time RELATIVE to drop spawning (t = 0 -> drop first appears) (drop "moves" 1 down after each time step "t")
+  // brightness is reduced far ahead and behind droplet "core". distribution is hard-coded
 
-  const float brightnessModifiers[15] = {0.5, 0.8, 0.95, 1, 0.95, 0.9, 0.85, 0.75, 0.65, 0.55, 0.4, 0.3, 0.2, 0.1, 0.0};
+  const float brightnessModifiers[15] = {0.5, 0.8, 0.95, 1, 0.95, 0.9, 0.85, 0.75, 0.65, 0.55, 0.4, 0.3, 0.2, 0.1, 0.01};
+  int currentZ = 0;         // the  z-coordinate of the current pixel being worked on (start from top and work down)
+  int8_t drop_position = 0; // location within the drop relative to its top
 
-  int currentZ = 0;  // the current pixel being worked on
   while (true) {
-    if (t - currentZ < 0) {   // don't bother looping thru pixels that are under the drop cus those are obviously off
+    drop_position = t - currentZ;   // update drop position based on newly selected pixel
+    if (drop_position > 15) {       // leave loop if the bottom of the drop is reached
       break;
     }
-    if (t >= currentZ) {
-      
+    else if  (drop_position < 0){   // currently selected pixel is above the drop (occurs for t > 0)
+      leds[locate_pixel(x, y, currentZ)] = CRGB::Black;   // just turn the pixel off
     }
-
+    else if (t >= currentZ) {  // currently selected pixel is in where the drop should go, apply color
+      leds[locate_pixel(x, y, currentZ)] = ColorFromPalette(palette, floor(drop_position*255/14), brightness*brightnessModifiers[drop_position]);
+    }
     currentZ++;
   }
-
-  // TODO: need to SET the end of the drop to zero
 
 }
 
@@ -402,22 +410,28 @@ void pattern_6() {
 
 }
 
+
+// define wave func that moves diagonally // to xy plane for pattern 7
+int pattern_7_wave_func(int x, int y, int t, int v, int A = 2){   
+  return A*sin(v*x + v*y - t) + (A + 1);  // compute z value (sin is in radians)
+}
+
 // pattern 7 - 3D wave
 void pattern_7() {
   float closenessThreshold = 0.2;      // how far the pixel location can be from the actual function output for the pixel to be turned on
   int8_t waveValue = 0;                // the "vertical position for a wave". surface corresponds to total depth, fades to black as value decreases
-  int8_t waveDepth = 6;                // how far pixels will be lit up (includes black at the very bottom) (includes surface)
+  int8_t waveDepth = 6;                // how far pixels down will be lit up (includes black at the very bottom) (includes surface)
+  int8_t waveSpeed = 6;                // how quickly the function changes with time
+  int8_t vel = 0.6;                    // set wave density
+  int8_t amplitude = 2;                // wave amplitude
 
   CRGBPalette16 activatedPalette = wavePalette;   // activate palette for this pattern
 
-  // TODO: will probably need to make the wave smoother somehow
-  // TODO: scale brightness with position
-  // TODO: LOOKS FLAT
   for (int x = 0; x < NUM_LINES; x++) {   // fill colors if a pixel is on or under the wave surface
     for (int y = 0; y < NUM_STRIPS_PER_LINE; y++) {
       for (int z = 0; z < NUM_LEDS_PER_STRIP; z++) {
         // check if wave is close to the current pixel and a wave hasn't already been drawn for the current column
-        if ((abs(pattern_7_wave_func(x, y, ((5 * cyclePosition)/ 113)) - z) <= closenessThreshold))  {  // 5 controls spd w/ time
+        if ((abs(pattern_7_wave_func(x, y, ((waveSpeed * cyclePosition)/113), vel) - z) <= closenessThreshold))  {  // 133 relates cycle pos to 2*pi
           waveValue = waveDepth;  // update waveValue to surface (max) value
         }
         else if (waveValue > 0) {
@@ -435,11 +449,6 @@ void pattern_7() {
   increment_counters(710);  // update counters (2pi ~ 710/113)
 }
 
-// define wave func that moves diagonally // to xy plane for pattern 7
-int pattern_7_wave_func(int x, int y, int t) {   
-  int v = 0.5;  // set wave density
-  return 2*sin(v*x + v*y - t) + 2;  // compute z value (sin is in radians), A and c are hard-coded
-}
 
 // pattern 8 - idk
 void pattern_8() {
@@ -453,20 +462,16 @@ void pattern_9() {
 
 // (unofficial) pattern 10 - coord test
 void coord_test() {
-  // whatever weirdness down there is wack so just text a few pixels statically, screw the flash mem endurance
   for (int i = 0; i < NUM_LINES; i++) { // x-axis test - successful
     leds[locate_pixel(i,0,0)] = CRGB(0, 0, brightness);
   }
-
   for (int i = 0; i < NUM_STRIPS_PER_LINE; i++) { // y-axis test - successful
     leds[locate_pixel(0,i,0)] = CRGB(0, brightness, 0);
   }
   for (int i = 0; i < NUM_LEDS_PER_STRIP; i++) { // z-axis test - successful
     leds[locate_pixel(0,0,i)] = CRGB(brightness, 0, 0);
   }
-  leds[locate_pixel(3, 3, 6)] = CRGB(brightness, 0, brightness);  // some pixel test - successful
 
+  leds[locate_pixel(3, 3, 6)] = CRGB(brightness, 0, brightness);  // some random pixel test - successful
 
 }
-
-
