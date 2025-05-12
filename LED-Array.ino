@@ -69,7 +69,7 @@ unsigned long lastPatternUpdate = 0;  // time (ms) since last frame of animation
 unsigned int cyclePosition = 0;       // the frame number within a moving pattern
 unsigned int frameCount    = 0;       // the number of intervals that a frame lasting longer than the pattern update cycle has been held for
 
-int brightness = 80;    // pattern brightness (0 - 255)          
+int brightness = 110;    // pattern brightness (0 - 255)          
 
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);  // declare LCD
 unsigned int lcdCyclePosition = 0;          // state counter for scrolling text
@@ -81,7 +81,7 @@ void setup() {
   lcd.begin(16, 2);
   lcd.print("Starting...");
 
-  delay(3000); // power-up safety delay   TODO: do i really need this lol
+  delay(3000); // power-up safety delay 
 
   // show initial pattern info on LCD
   display_pattern(patternNumber);
@@ -106,7 +106,7 @@ void setup() {
   FastLED.addLeds<NEOPIXEL, DATA_PIN_3>(leds, 240, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 3 (start at index 240)
   FastLED.addLeds<NEOPIXEL, DATA_PIN_4>(leds, 320, NUM_LEDS_PER_STRIP * NUM_STRIPS_PER_LINE);    // line 4 (start at index 320)
 
-  Serial.begin(9600);   // set up serial monitor (FOR TESTING ONLY)
+  //Serial.begin(9600);   // set up serial monitor (FOR TESTING ONLY)
 }
 
 // want to alternate btwn button stuff and displaying the current pattern
