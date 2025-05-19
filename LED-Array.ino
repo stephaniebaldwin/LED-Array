@@ -34,12 +34,8 @@ String patternNames[] = {"nothing lmao",                        // 0
                          "Alternating RGB",                     // 2
                          "100% rainbow",                        // 3
                          "wave of rainbow (left-to-right)",     // 4
-                         "Raindrops",                           // 5
-                         "Rainbow Raindrops",                   // 6
-                         "3D Diagonal Waves",                   // 7
-                         "8",                                   // 8    original idea sounds like too much of a pain to implement, if u think of anything good put it here
-                         "9",                                   // 9
-                         "coord test"};
+                         "3D Diagonal Waves",                   // 5
+                         "coord test"};                         // 6
 
 const int rs = 12;            // LCD consts
 const int en = 13;
@@ -132,15 +128,8 @@ void loop() {
       case 5:
         pattern_5();  break;
       case 6:
-        pattern_6();  break;
-      case 7:
-        pattern_7();  break;
-      case 8:
-        pattern_8();  break;
-      case 9:
-        pattern_9();  break;
-      case 10:
-        coord_test(); break;
+        coord_test();  break;
+
     }
     FastLED.show();   // push updates to led strips
 
@@ -171,12 +160,6 @@ int locate_pixel(int x,int y,int z){
   return index;
 
 };
-
-/*
-#define NUM_LEDS_PER_STRIP  10     // z  TEMP SO I DONT HAVE TO SCROLL ALL THE WAY UP
-#define NUM_STRIPS_PER_LINE 8      // y
-#define NUM_LINES 5                // x
-*/
 
 
 // use button inputs to change patterns  
@@ -213,7 +196,6 @@ void update_pattern() {
 
 
 // diplay specified pattern name and number on LCD    
-// TODO: LCD text changes to nonsense sometimes
 void display_pattern(int pattern_num){
   //assumes that LCD and patternNames structure are global
   String name = patternNames[pattern_num] + "  ";   // get name of selected pattern
@@ -349,7 +331,7 @@ void pattern_4(){
 }
 
 // pattern 5 - raindrops
-void pattern_5() {
+void raindrops() {
   // TODO: this whole thing is untested
   CRGBPalette16 activatedPalette = wavePalette;   // activate palette for this pattern
 
@@ -405,19 +387,16 @@ void drop_fall(CRGBPalette16 palette, int x, int y, int t) {
 
 }
 
-// pattern 6 - rainbow raindrops
-void pattern_6() {   
-
-}
 
 
 // define wave func that moves diagonally // to xy plane for pattern 7
-int pattern_7_wave_func(int x, int y, int t, int v, int A = 2){   
+int wave_func(int x, int y, int t, int v, int A = 2){   
   return A*sin(v*x + v*y - t) + (A + 1);  // compute z value (sin is in radians)
 }
 
-// pattern 7 - 3D wave
-void pattern_7() {
+// pattern 5 - 3D wave
+// was originally pattern 7 (before the raindrop patterns were deleted)
+void pattern_5() {
   float closenessThreshold = 0.2;      // how far the pixel location can be from the actual function output for the pixel to be turned on
   int8_t waveValue = 0;                // the "vertical position for a wave". surface corresponds to total depth, fades to black as value decreases
   int8_t waveDepth = 6;                // how far pixels down will be lit up (includes black at the very bottom) (includes surface)
@@ -431,7 +410,7 @@ void pattern_7() {
     for (int y = 0; y < NUM_STRIPS_PER_LINE; y++) {
       for (int z = 0; z < NUM_LEDS_PER_STRIP; z++) {
         // check if wave is close to the current pixel and a wave hasn't already been drawn for the current column
-        if ((abs(pattern_7_wave_func(x, y, ((waveSpeed * cyclePosition)/113), vel) - z) <= closenessThreshold))  {  // 133 relates cycle pos to 2*pi
+        if ((abs(wave_func(x, y, ((waveSpeed * cyclePosition)/113), vel) - z) <= closenessThreshold))  {  // 133 relates cycle pos to 2*pi
           waveValue = waveDepth;  // update waveValue to surface (max) value
         }
         else if (waveValue > 0) {
@@ -450,17 +429,7 @@ void pattern_7() {
 }
 
 
-// pattern 8 - idk
-void pattern_8() {
-
-}
-
-// pattern 9  - idk
-void pattern_9() {
-  // idk
-}
-
-// (unofficial) pattern 10 - coord test
+// (unofficial) pattern 6 - coord test (static)
 void coord_test() {
   for (int i = 0; i < NUM_LINES; i++) { // x-axis test - successful
     leds[locate_pixel(i,0,0)] = CRGB(0, 0, brightness);
